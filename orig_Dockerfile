@@ -1,0 +1,46 @@
+FROM centos:7
+MAINTAINER "samsixtyone" <sam.sixtyone@gmail.com>
+ENV container docker
+RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
+systemd-tmpfiles-setup.service ] || rm -f $i; done); \
+rm -f /lib/systemd/system/multi-user.target.wants/*;\
+rm -f /etc/systemd/system/*.wants/*;\
+rm -f /lib/systemd/system/local-fs.target.wants/*; \
+rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+rm -f /lib/systemd/system/basic.target.wants/*;\
+rm -f /lib/systemd/system/anaconda.target.wants/*; 
+#VOLUME [ "/sys/fs/cgroup" ]
+
+RUN yum -y install wget vim git initscripts epel-release sudo; \
+yum -y install systemd systemd-libs; \
+yum -y update; yum clean all;\
+wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo; \
+rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key; \
+yum -y install java-1.8.0-openjdk jenkins nginx nodejs npm; \
+mkdir -p /etc/nginx/ssl; mkdir /app;
+
+COPY ssl.conf /etc/nginx/conf.d/ssl.conf
+COPY server.crt /etc/nginx/ssl/server.crt
+COPY server.key /etc/nginx/ssl/server.key
+COPY nginx /etc/init.d/nginx
+COPY sudoers /etc/sudoers
+#COPY start.sh /usr/local/bin/start.sh
+
+#RUN /etc/init.d/nginx restart
+#RUN /etc/init.d/jenkins restart
+
+EXPOSE 443 8080 
+
+#COPY src/package.json /src/package.json
+#RUN cd /app; git clone https://github.com/ccoenraets/directory-react-nodejs.git
+RUN cd /app; git clone https://github.com/samsixtyone/directory-react-nodejs.git
+RUN cd /app/directory-react-nodejs; npm install --production
+
+# Bundle app source
+#COPY src/index.js /src/index.js
+
+#CMD ["node", "/app/directory-react-nodejs/server.js"]
+#CMD bash -C '/usr/local/bin/start.sh';'bash'
+ENTRYPOINT /etc/init.d/nginx start && /etc/init.d/jenkins start && /usr/sbin/init
+# CMD ["/usr/sbin/init"]
